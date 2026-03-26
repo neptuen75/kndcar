@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>차량 배차 요청서</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent:#1a56c4; --accent-light:#3b82f6; --accent-bg:#eff6ff;
+    --header-bg:#1e3a5f; --row-even:#f0f6ff; --row-hover:#dbeafe;
+    --border:#c8d9ee; --border-light:#e2ecf7;
+    --text:#1a2535; --text-sub:#5a6e88;
+    --danger:#dc2626; --success:#16a34a; --warn:#d97706;
+    --sans:'Noto Sans KR',sans-serif; --mono:'IBM Plex Mono',monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:#f4f7fb;color:var(--text);min-height:100vh;padding:2rem 1rem 4rem}
+  .page{max-width:1200px;margin:0 auto}
+
+  /* ── Setup Banner ── */
+  .setup-banner{background:#fffbeb;border:1.5px solid #fcd34d;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem;display:flex;gap:12px;align-items:flex-start}
+  .setup-banner.hidden{display:none}
+  .setup-icon{font-size:20px;flex-shrink:0;margin-top:2px}
+  .setup-body strong{font-size:13px;color:#92400e;display:block;margin-bottom:6px}
+  .setup-body p{font-size:12px;color:#78350f;line-height:1.7;margin-bottom:8px}
+  .setup-input-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .setup-input-row input{flex:1;min-width:280px;font-family:var(--mono);font-size:12px;padding:8px 10px;border:1px solid #fbbf24;border-radius:6px;background:#fff;color:var(--text);outline:none}
+  .setup-input-row input:focus{border-color:var(--accent-light)}
+  .btn-connect{font-family:var(--sans);font-size:12px;font-weight:600;padding:8px 16px;border-radius:6px;cursor:pointer;border:none;white-space:nowrap;transition:background .15s}
+  .btn-connect.primary{background:#d97706;color:#fff}
+  .btn-connect.primary:hover{background:#b45309}
+  .btn-connect.secondary{background:#64748b;color:#fff}
+  .btn-connect.secondary:hover{background:#475569}
+
+  /* ── Header ── */
+  .hd{background:var(--header-bg);border-radius:12px 12px 0 0;padding:1.5rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+  .hd-left{display:flex;flex-direction:column;gap:4px}
+  .hd-tag{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#93c5fd;display:flex;align-items:center;gap:7px}
+  .hd-tag::before{content:'';width:16px;height:1.5px;background:#93c5fd}
+  h1{font-size:clamp(22px,3.5vw,32px);font-weight:700;color:#fff;letter-spacing:-.02em}
+  .hd-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .sync-badge{font-family:var(--mono);font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;gap:6px;transition:all .3s;white-space:nowrap}
+  .sync-badge::before{content:'●';font-size:8px}
+  .sync-ok     {color:#a5f3a5;background:rgba(22,163,74,.2)}
+  .sync-syncing{color:#fde68a;background:rgba(217,119,6,.25);border-color:rgba(217,119,6,.4)}
+  .sync-error  {color:#fca5a5;background:rgba(220,38,38,.2);border-color:rgba(220,38,38,.35)}
+  .sync-noconn {color:#e2e8f0;background:rgba(100,116,139,.25);border-color:rgba(100,116,139,.3)}
+  .sheets-link{font-size:11px;color:#93c5fd;text-decoration:none;display:flex;align-items:center;gap:4px}
+  .sheets-link:hover{color:#bfdbfe}
+
+  /* ── Body card ── */
+  .body-card{background:#fff;border:1px solid var(--border);border-top:none;border-radius:0 0 12px 12px;padding:1.5rem 2rem 2rem}
+
+  /* ── Meta ── */
+  .meta{display:flex;gap:1.25rem;flex-wrap:wrap;background:var(--accent-bg);border:1px solid var(--border-light);border-radius:8px;padding:.9rem 1.25rem;margin-bottom:1.25rem}
+  .meta-item{display:flex;align-items:center;gap:8px}
+  .meta-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-sub)}
+  .meta-item input{font-family:var(--sans);background:transparent;border:none;border-bottom:1.5px solid var(--border);color:var(--text);font-size:13px;padding:3px 6px;outline:none;min-width:110px;transition:border-color .2s}
+  .meta-item input:focus{border-bottom-color:var(--accent-light)}
+  .meta-item input[type="date"]{min-width:140px}
+
+  /* ── Summary ── */
+  .summary{display:flex;gap:10px;margin-bottom:1.1rem;flex-wrap:wrap}
+  .chip{background:#fff;border:1px solid var(--border);border-radius:8px;padding:7px 16px;font-size:13px;color:var(--text-sub);display:flex;align-items:center;gap:8px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .chip strong{font-family:var(--mono);font-size:16px;color:var(--accent)}
+
+  /* ── Table ── */
+  .tbl-wrap{border:1px solid var(--border);border-radius:10px;overflow:hidden;overflow-x:auto;margin-bottom:1rem;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+  table{width:100%;border-collapse:collapse;min-width:960px}
+  thead tr{background:var(--header-bg)}
+  thead th{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#bfdbfe;padding:11px 8px;text-align:center;border-right:1px solid rgba(255,255,255,.1);white-space:nowrap}
+  thead th:first-child{color:#7fb3e8;width:42px}
+  thead th:last-child{border-right:none}
+  tbody tr{border-bottom:1px solid var(--border-light);transition:background .1s}
+  tbody tr:nth-child(even){background:var(--row-even)}
+  tbody tr:hover{background:var(--row-hover)}
+  tbody tr:last-child{border-bottom:none}
+  tbody td{padding:0;border-right:1px solid var(--border-light)}
+  tbody td:last-child{border-right:none}
+  .row-num{font-family:var(--mono);font-size:11px;color:#aab8cc;text-align:center;padding:8px 4px;width:42px;min-width:42px;user-select:none}
+  tbody td input,tbody td select{width:100%;border:none;background:transparent;font-family:var(--sans);font-size:13px;color:var(--text);padding:8px 8px;text-align:center;outline:none;transition:background .1s}
+  tbody td input::placeholder{color:#bbc8d9;font-size:12px}
+  tbody td input:focus,tbody td select:focus{background:#dbeafe}
+  tbody td input[type="number"]{font-family:var(--mono)}
+  tbody td.note-col input{text-align:left}
+  tbody td select{cursor:pointer;-webkit-appearance:none;appearance:none}
+  tbody td select option{background:#fff;color:var(--text)}
+
+  /* ── Actions ── */
+  .actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-bottom:.75rem}
+  .btn{font-family:var(--sans);font-size:13px;font-weight:500;padding:8px 16px;border-radius:7px;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--text-sub);transition:all .15s;display:flex;align-items:center;gap:6px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+  .btn:hover{background:#f0f6ff;color:var(--text)}
+  .btn:active{transform:scale(.97)}
+  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+  .btn-add{color:var(--accent);border-color:#93c5fd}
+  .btn-add:hover{background:var(--accent-bg)}
+  .btn-del{color:var(--danger);border-color:#fca5a5}
+  .btn-del:hover{background:#fff1f1}
+  .btn-load{color:var(--warn);border-color:#fcd34d}
+  .btn-load:hover{background:#fffbeb}
+  .btn-save{color:var(--success);border-color:#86efac;font-weight:600}
+  .btn-save:hover{background:#f0fdf4}
+  .btn-print{background:var(--accent);color:#fff;border-color:var(--accent);padding:8px 20px}
+  .btn-print:hover{background:var(--accent-light);border-color:var(--accent-light)}
+  .icon{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+
+  .note-bar{font-size:12px;color:var(--text-sub);display:flex;align-items:center;gap:6px;padding-top:.5rem}
+  .note-bar::before{content:'※';color:var(--accent);font-weight:700}
+
+  /* ── Guide ── */
+  .guide{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1.5rem 2rem;margin-top:1.5rem}
+  .guide h2{font-size:15px;font-weight:700;color:var(--header-bg);margin-bottom:1rem}
+  .guide ol{font-size:13px;color:var(--text);line-height:2.1;padding-left:1.25rem}
+  .guide code{background:#f1f5f9;padding:1px 6px;border-radius:3px;font-family:var(--mono);font-size:12px}
+  .guide .tip{background:#eff6ff;border-radius:8px;padding:.75rem 1rem;margin-top:.75rem;font-size:12px;color:#1e40af;line-height:1.7}
+  .guide .warn-tip{background:#fffbeb;border-radius:8px;padding:.75rem 1rem;margin-top:.6rem;font-size:12px;color:#92400e;line-height:1.7}
+
+  /* ── Toast ── */
+  .toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(10px);background:#1e3a5f;color:#fff;font-size:13px;padding:10px 20px;border-radius:8px;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.2);z-index:999}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  @media print{
+    body{background:#fff;padding:.5cm 1cm}
+    .setup-banner,.actions,.note-bar,.toast,.guide{display:none!important}
+    .hd{background:#1e3a5f!important;border-radius:8px 8px 0 0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    thead tr{background:#1e3a5f!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    tbody tr:nth-child(even){background:#eff6ff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    tbody td input,tbody td select{color:#1a2535!important}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Setup Banner -->
+  <div class="setup-banner" id="setupBanner">
+    <div class="setup-icon">🔗</div>
+    <div class="setup-body">
+      <strong>Google Sheets 연동 설정 (최초 1회)</strong>
+      <p>Apps Script 웹앱 URL을 입력하면 구글 스프레드시트에 데이터를 저장할 수 있습니다.<br>
+         설정 방법은 페이지 하단 안내를 참고하세요.</p>
+      <div class="setup-input-row">
+        <input type="text" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/AKfyc.../exec">
+        <button class="btn-connect primary" onclick="connectScript()">연결하기</button>
+        <button class="btn-connect secondary" onclick="skipSetup()">나중에</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="hd">
+    <div class="hd-left">
+      <div class="hd-tag">Logistics · Dispatch</div>
+      <h1>차량 배차 요청서</h1>
+    </div>
+    <div class="hd-right">
+      <div class="sync-badge sync-noconn" id="syncBadge">Google Sheets 미연결</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <a class="sheets-link" id="sheetsLink" href="#" target="_blank" style="display:none">
+          <svg style="width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          스프레드시트 열기
+        </a>
+        <button id="btnDisconnect" onclick="disconnectScript()" style="display:none;font-family:var(--sans);font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;border:1px solid rgba(252,165,165,0.5);background:rgba(220,38,38,0.15);color:#fca5a5;transition:all .15s">
+          🔌 연결 해제
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="body-card">
+    <div class="meta">
+      <div class="meta-item"><span class="meta-label">작성일</span><input type="date" id="writeDate"></div>
+      <div class="meta-item"><span class="meta-label">작성자</span><input type="text" id="writer" placeholder="이름"></div>
+      <div class="meta-item"><span class="meta-label">부서</span><input type="text" id="dept" placeholder="부서명"></div>
+      <div class="meta-item"><span class="meta-label">연락처</span><input type="text" id="phone" placeholder="000-0000-0000"></div>
+    </div>
+
+    <div class="summary">
+      <div class="chip">총 행 수 <strong id="sumRows">0</strong></div>
+      <div class="chip">총 파렛트 <strong id="sumPallets">0</strong></div>
+      <div class="chip">총 차량 수 <strong id="sumVehicles">0</strong></div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>No.</th><th>일자</th><th>현장담당자</th><th>현장명</th>
+            <th>상 / 하차지</th><th>차량 종류</th><th>파렛트 수량</th><th>차량 수</th><th>비고</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="actions">
+      <button class="btn" onclick="clearAll()">
+        <svg class="icon" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.58"/></svg>초기화
+      </button>
+      <button class="btn btn-del" onclick="removeRow()">
+        <svg class="icon" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg>행 삭제
+      </button>
+      <button class="btn btn-add" onclick="addRow()">
+        <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>행 추가
+      </button>
+      <button class="btn btn-load" id="btnLoad" onclick="loadFromSheets()" disabled>
+        <svg class="icon" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.58"/></svg>시트에서 불러오기
+      </button>
+      <button class="btn btn-save" id="btnSave" onclick="saveToSheets()" disabled>
+        <svg class="icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Google Sheets에 저장
+      </button>
+      <button class="btn btn-print" onclick="window.print()">
+        <svg class="icon" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>인쇄 / PDF
+      </button>
+    </div>
+
+    <div class="note-bar">배차 요청 시 최소 1일 전 제출 바랍니다. "Google Sheets에 저장" 버튼으로 스프레드시트에 즉시 기록됩니다.</div>
+  </div>
+
+  <!-- Guide -->
+  <div class="guide">
+    <h2>📋 Google Sheets 연동 설정 방법</h2>
+    <ol>
+      <li>Google Drive에서 새 <strong>스프레드시트</strong>를 만드세요.</li>
+      <li>상단 메뉴 <strong>확장 프로그램 → Apps Script</strong> 클릭</li>
+      <li>에디터의 기존 코드를 모두 지우고, 제공된 <code>Code.gs</code> 내용을 전체 붙여넣기 후 <strong>저장(💾)</strong></li>
+      <li>상단 <strong>배포 → 새 배포</strong> 클릭</li>
+      <li>유형: <strong>웹 앱</strong> 선택</li>
+      <li>다음 사용자로 실행: <strong>나</strong> / 액세스 권한: <strong>모든 사용자</strong> 로 설정</li>
+      <li><strong>배포</strong> → Google 계정 권한 허용 → 표시된 <strong>웹앱 URL 복사</strong></li>
+      <li>이 페이지 상단 입력창에 붙여넣기 → <strong>연결하기</strong> 클릭</li>
+    </ol>
+    <div class="tip">
+      💡 <strong>코드 수정 후 재배포할 때</strong>: "새 배포"가 아니라 <strong>배포 관리 → ✏️ 편집 → 버전 "새 버전"</strong> 으로 업데이트해야 URL이 유지됩니다.
+    </div>
+    <div class="warn-tip">
+      ⚠️ <strong>저장 실패 시 체크리스트</strong><br>
+      1. 액세스 권한이 <strong>"모든 사용자"</strong> 로 설정되어 있는지 확인<br>
+      2. 배포 후 새 버전이 아니라 기존 버전 URL을 사용 중인지 확인<br>
+      3. URL이 <code>/exec</code> 로 끝나는지 확인 (<code>/dev</code> 는 로그인 필요)
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const VTYPES   = ['선택','카고','윙바디','탑차','냉동차','냉장차','츄레라','트레일러','기타'];
+const LS_URL   = 'dispatch_script_url';
+const tbody    = document.getElementById('tableBody');
+let   SCRIPT_URL = localStorage.getItem(LS_URL) || '';
+
+/* ── URL 연결 ── */
+function connectScript() {
+  const url = document.getElementById('scriptUrlInput').value.trim();
+  if (!url.startsWith('https://script.google.com')) {
+    toast('올바른 Apps Script URL을 입력해 주세요.', true); return;
+  }
+  SCRIPT_URL = url;
+  localStorage.setItem(LS_URL, url);
+  document.getElementById('setupBanner').classList.add('hidden');
+  enableButtons(true);
+  setBadge('연결됨', 'ok');
+  toast('✅ Google Sheets 연결 완료!');
+}
+
+function skipSetup() {
+  document.getElementById('setupBanner').classList.add('hidden');
+}
+
+function enableButtons(on) {
+  document.getElementById('btnSave').disabled = !on;
+  document.getElementById('btnLoad').disabled = !on;
+  document.getElementById('btnDisconnect').style.display = on ? 'inline-flex' : 'none';
+  document.getElementById('sheetsLink').style.display    = on ? 'flex' : 'none';
+}
+
+function disconnectScript() {
+  if (!confirm('Google Sheets 연결을 해제하시겠습니까?\n새 URL로 다시 연결할 수 있습니다.')) return;
+  SCRIPT_URL = '';
+  localStorage.removeItem(LS_URL);
+  enableButtons(false);
+  setBadge('Google Sheets 미연결', 'noconn');
+  document.getElementById('scriptUrlInput').value = '';
+  document.getElementById('setupBanner').classList.remove('hidden');
+  toast('🔌 연결이 해제되었습니다.');
+}
+
+/* ── 행 생성 ── */
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+function makeRow(d = {}) {
+  const tr   = document.createElement('tr');
+  const opts = VTYPES.map(v =>
+    `<option value="${v}"${v===(d.vtype||'선택')?' selected':''}>${v}</option>`).join('');
+  tr.innerHTML = `
+    <td class="row-num">-</td>
+    <td><input type="date"   class="col-date"   value="${esc(d.date)}"></td>
+    <td><input type="text"   class="col-mgr"    value="${esc(d.mgr)}"    placeholder="담당자명"></td>
+    <td><input type="text"   class="col-site"   value="${esc(d.site)}"   placeholder="현장명"></td>
+    <td><input type="text"   class="col-loc"    value="${esc(d.loc)}"    placeholder="상차지 → 하차지"></td>
+    <td><select class="col-vtype">${opts}</select></td>
+    <td><input type="number" class="col-pallet" value="${esc(d.pallet)}" placeholder="0" min="0" oninput="updateSummary()"></td>
+    <td><input type="number" class="col-veh"    value="${esc(d.veh)}"    placeholder="0" min="0" oninput="updateSummary()"></td>
+    <td class="note-col"><input type="text" class="col-note" value="${esc(d.note)}" placeholder="비고"></td>`;
+  tbody.appendChild(tr);
+  renumber(); updateSummary();
+}
+
+function addRow()    { makeRow(); }
+function removeRow() {
+  if (tbody.rows.length > 1) { tbody.removeChild(tbody.lastChild); renumber(); updateSummary(); }
+}
+function renumber()  { Array.from(tbody.rows).forEach((r,i) => r.cells[0].textContent = i+1); }
+
+function clearAll() {
+  if (!confirm('모든 입력 내용을 초기화하시겠습니까?')) return;
+  ['writeDate','writer','dept','phone'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('writeDate').value = today();
+  tbody.innerHTML = '';
+  for (let i=0;i<10;i++) makeRow();
+}
+
+function updateSummary() {
+  const p = [...document.querySelectorAll('.col-pallet')].reduce((s,i)=>s+(parseInt(i.value)||0),0);
+  const v = [...document.querySelectorAll('.col-veh')].reduce((s,i)=>s+(parseInt(i.value)||0),0);
+  document.getElementById('sumRows').textContent     = tbody.rows.length;
+  document.getElementById('sumPallets').textContent  = p.toLocaleString();
+  document.getElementById('sumVehicles').textContent = v.toLocaleString();
+}
+
+function collectData() {
+  return {
+    meta: {
+      date:   document.getElementById('writeDate').value,
+      writer: document.getElementById('writer').value,
+      dept:   document.getElementById('dept').value,
+      phone:  document.getElementById('phone').value,
+    },
+    rows: Array.from(tbody.rows).map(r => ({
+      date:   r.querySelector('.col-date')?.value   ||'',
+      mgr:    r.querySelector('.col-mgr')?.value    ||'',
+      site:   r.querySelector('.col-site')?.value   ||'',
+      loc:    r.querySelector('.col-loc')?.value    ||'',
+      vtype:  r.querySelector('.col-vtype')?.value  ||'선택',
+      pallet: r.querySelector('.col-pallet')?.value ||'',
+      veh:    r.querySelector('.col-veh')?.value    ||'',
+      note:   r.querySelector('.col-note')?.value   ||'',
+    }))
+  };
+}
+
+/* ── Google Sheets 저장 (GET + JSONP) ── */
+function saveToSheets() {
+  if (!SCRIPT_URL) { toast('먼저 Apps Script URL을 연결해 주세요.', true); return; }
+  setBadge('저장 중…', 'syncing');
+  document.getElementById('btnSave').disabled = true;
+
+  const data    = collectData();
+  const encoded = encodeURIComponent(JSON.stringify(data));
+  const url     = `${SCRIPT_URL}?action=save&data=${encoded}`;
+
+  jsonpRequest(url, (res) => {
+    document.getElementById('btnSave').disabled = false;
+    if (res && res.ok) {
+      setBadge('저장 완료 ✓', 'ok');
+      toast('✅ Google Sheets에 저장되었습니다!');
+    } else {
+      setBadge('저장 실패', 'error');
+      toast('❌ 저장 실패: ' + (res?.error || '응답 없음'), true);
+    }
+  }, () => {
+    document.getElementById('btnSave').disabled = false;
+    setBadge('저장 실패', 'error');
+    toast('❌ 네트워크 오류. URL을 다시 확인해 주세요.', true);
+  });
+}
+
+/* ── Google Sheets 불러오기 (GET + JSONP) ── */
+function loadFromSheets() {
+  if (!SCRIPT_URL) { toast('먼저 Apps Script URL을 연결해 주세요.', true); return; }
+  if (!confirm('시트 데이터를 불러오면 현재 입력 내용이 교체됩니다. 계속하시겠습니까?')) return;
+  setBadge('불러오는 중…', 'syncing');
+  document.getElementById('btnLoad').disabled = true;
+
+  const url = `${SCRIPT_URL}?action=load`;
+
+  jsonpRequest(url, (res) => {
+    document.getElementById('btnLoad').disabled = false;
+    if (!res || !res.ok) {
+      setBadge('불러오기 실패', 'error');
+      toast('❌ 불러오기 실패: ' + (res?.error || '응답 없음'), true);
+      return;
+    }
+    tbody.innerHTML = '';
+    if (res.rows && res.rows.length > 0) {
+      const first = res.rows[0];
+      document.getElementById('writeDate').value = first['작성일'] || '';
+      document.getElementById('writer').value    = first['작성자'] || '';
+      document.getElementById('dept').value      = first['부서']   || '';
+      document.getElementById('phone').value     = first['연락처'] || '';
+      res.rows.forEach(r => makeRow({
+        date:   r['일자']       || '',
+        mgr:    r['현장담당자'] || '',
+        site:   r['현장명']     || '',
+        loc:    r['상하차지']   || '',
+        vtype:  r['차량종류']   || '선택',
+        pallet: r['파렛트수량'] || '',
+        veh:    r['차량수']     || '',
+        note:   r['비고']       || '',
+      }));
+    } else {
+      for (let i=0;i<10;i++) makeRow();
+    }
+    setBadge('불러오기 완료 ✓', 'ok');
+    toast('✅ 시트 데이터를 불러왔습니다!');
+  }, () => {
+    document.getElementById('btnLoad').disabled = false;
+    setBadge('불러오기 실패', 'error');
+    toast('❌ 네트워크 오류. URL을 다시 확인해 주세요.', true);
+  });
+}
+
+/* ── JSONP 헬퍼 (CORS 완전 우회) ── */
+function jsonpRequest(url, onSuccess, onError) {
+  const cbName = '_gs_cb_' + Date.now();
+  const script = document.createElement('script');
+  const timer  = setTimeout(() => {
+    cleanup(); onError && onError();
+  }, 15000);
+
+  window[cbName] = (data) => { cleanup(); onSuccess(data); };
+
+  function cleanup() {
+    clearTimeout(timer);
+    delete window[cbName];
+    if (script.parentNode) script.parentNode.removeChild(script);
+  }
+
+  // Apps Script가 callback 파라미터를 지원하지 않으므로
+  // fetch no-cors → text 파싱 방식으로 fallback
+  fetch(url, { method: 'GET' })
+    .then(r => r.text())
+    .then(text => {
+      // Apps Script가 리다이렉트 후 JSON 반환
+      const json = JSON.parse(text);
+      onSuccess(json);
+    })
+    .catch(() => {
+      // fetch 실패 시 script 태그로 재시도 (최후 수단)
+      script.onerror = () => { cleanup(); onError && onError(); };
+      script.src = url + '&callback=' + cbName;
+      document.head.appendChild(script);
+    });
+
+  // script 태그 fallback은 위에서 처리하므로 즉시 cleanup
+  clearTimeout(timer);
+  delete window[cbName];
+}
+
+/* ── Badge & Toast ── */
+function setBadge(text, state) {
+  const b = document.getElementById('syncBadge');
+  b.textContent = text;
+  b.className   = 'sync-badge sync-' + (state === 'ok' ? 'ok' : state);
+}
+
+let toastTimer;
+function toast(msg, isErr=false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = isErr ? '#991b1b' : '#1e3a5f';
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+function today() { return new Date().toISOString().split('T')[0]; }
+
+/* ── Init ── */
+document.getElementById('writeDate').value = today();
+
+if (SCRIPT_URL) {
+  document.getElementById('setupBanner').classList.add('hidden');
+  document.getElementById('scriptUrlInput').value = SCRIPT_URL;
+  enableButtons(true);
+  setBadge('시트 불러오는 중…', 'syncing');
+
+  // 페이지 열릴 때 자동으로 시트 데이터 불러오기
+  const url = SCRIPT_URL + '?action=load';
+  jsonpRequest(url, (res) => {
+    if (res && res.ok && res.rows && res.rows.length > 0) {
+      tbody.innerHTML = '';
+      const first = res.rows[0];
+      document.getElementById('writeDate').value = first['작성일'] || first['write_date'] || today();
+      document.getElementById('writer').value    = first['작성자'] || first['writer']     || '';
+      document.getElementById('dept').value      = first['부서']   || first['dept']       || '';
+      document.getElementById('phone').value     = first['연락처'] || first['phone']      || '';
+      res.rows.forEach(r => makeRow({
+        date:   r['일자']       || r['date']     || '',
+        mgr:    r['현장담당자'] || r['manager']  || '',
+        site:   r['현장명']     || r['site']     || '',
+        loc:    r['상하차지']   || r['location'] || '',
+        vtype:  r['차량종류']   || r['vtype']    || '선택',
+        pallet: r['파렛트수량'] || r['pallets']  || '',
+        veh:    r['차량수']     || r['vehicles'] || '',
+        note:   r['비고']       || r['note']     || '',
+      }));
+      setBadge('연결됨 · 데이터 불러옴 ✓', 'ok');
+      toast('✅ 시트 데이터를 자동으로 불러왔습니다.');
+    } else {
+      // 시트에 데이터 없으면 빈 행 10개로 시작
+      for (let i=0;i<10;i++) makeRow();
+      setBadge('연결됨', 'ok');
+    }
+  }, () => {
+    // 불러오기 실패 시 빈 행으로 시작
+    for (let i=0;i<10;i++) makeRow();
+    setBadge('연결됨 (불러오기 실패)', 'error');
+    toast('⚠️ 시트 자동 불러오기 실패. 수동으로 "시트에서 불러오기" 버튼을 눌러주세요.', true);
+  });
+} else {
+  // 미연결 상태면 빈 행 10개로 시작
+  for (let i=0;i<10;i++) makeRow();
+}
+</script>
+</body>
+</html>
